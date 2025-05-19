@@ -1,4 +1,4 @@
--- SQL script for employee management system
+-- SQL script for employee payroll management system
 
 -- Users table for authentication
 CREATE TABLE IF NOT EXISTS users (
@@ -12,47 +12,69 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
--- Employees table
-CREATE TABLE IF NOT EXISTS employees (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    first_name VARCHAR(50) NOT NULL,
-    last_name VARCHAR(50) NOT NULL,
-    email VARCHAR(100) NOT NULL UNIQUE,
-    phone VARCHAR(20),
-    address TEXT,
-    position VARCHAR(100),
-    department VARCHAR(100),
-    hire_date DATE,
+-- Department table
+CREATE TABLE IF NOT EXISTS departments (
+    department_code VARCHAR(10) PRIMARY KEY,
+    department_name VARCHAR(100) NOT NULL,
+    gross_salary DECIMAL(10, 2) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
--- Salaries table
-CREATE TABLE IF NOT EXISTS salaries (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    employee_id INT NOT NULL,
-    amount DECIMAL(10, 2) NOT NULL,
-    effective_date DATE NOT NULL,
-    end_date DATE,
+-- Employees table
+CREATE TABLE IF NOT EXISTS employees (
+    employee_number VARCHAR(20) PRIMARY KEY,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    position VARCHAR(100) NOT NULL,
+    address TEXT,
+    telephone VARCHAR(20),
+    gender ENUM('Male', 'Female', 'Other'),
+    hired_date DATE NOT NULL,
+    department_code VARCHAR(10) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
+    FOREIGN KEY (department_code) REFERENCES departments(department_code)
+);
+
+-- Salary table
+CREATE TABLE IF NOT EXISTS salaries (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    employee_number VARCHAR(20) NOT NULL,
+    gross_salary DECIMAL(10, 2) NOT NULL,
+    total_deduction DECIMAL(10, 2) NOT NULL,
+    net_salary DECIMAL(10, 2) NOT NULL,
+    month DATE NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (employee_number) REFERENCES employees(employee_number) ON DELETE CASCADE
 );
 
 -- Insert a default admin user (password: admin123)
 INSERT INTO users (username, password, first_name, last_name, email)
 VALUES ('admin', '$2b$10$mLEI4smzk0YQPfNx7KA5UOlHu.77V0VG/W9RqQmPBJA0KQNu4W5Hy', 'Admin', 'User', 'admin@example.com');
 
--- Insert sample employees
-INSERT INTO employees (first_name, last_name, email, phone, address, position, department, hire_date)
+-- Insert sample departments
+INSERT INTO departments (department_code, department_name, gross_salary)
 VALUES
-('John', 'Doe', 'john.doe@example.com', '555-123-4567', '123 Main St, Anytown, USA', 'Software Engineer', 'Engineering', '2022-01-15'),
-('Jane', 'Smith', 'jane.smith@example.com', '555-987-6543', '456 Oak Ave, Somewhere, USA', 'HR Manager', 'Human Resources', '2021-05-20'),
-('Michael', 'Johnson', 'michael.johnson@example.com', '555-456-7890', '789 Pine Rd, Nowhere, USA', 'Accountant', 'Finance', '2022-03-10');
+('ENG', 'Engineering', 75000.00),
+('HR', 'Human Resources', 65000.00),
+('FIN', 'Finance', 70000.00),
+('MKT', 'Marketing', 60000.00);
+
+-- Insert sample employees
+INSERT INTO employees (employee_number, first_name, last_name, position, address, telephone, gender, hired_date, department_code)
+VALUES
+('EMP001', 'John', 'Doe', 'Software Engineer', '123 Main St, Anytown, USA', '555-123-4567', 'Male', '2022-01-15', 'ENG'),
+('EMP002', 'Jane', 'Smith', 'HR Manager', '456 Oak Ave, Somewhere, USA', '555-987-6543', 'Female', '2021-05-20', 'HR'),
+('EMP003', 'Michael', 'Johnson', 'Accountant', '789 Pine Rd, Nowhere, USA', '555-456-7890', 'Male', '2022-03-10', 'FIN');
 
 -- Insert sample salaries
-INSERT INTO salaries (employee_id, amount, effective_date)
+INSERT INTO salaries (employee_number, gross_salary, total_deduction, net_salary, month)
 VALUES
-(1, 75000.00, '2022-01-15'),
-(2, 85000.00, '2021-05-20'),
-(3, 65000.00, '2022-03-10');
+('EMP001', 75000.00, 15000.00, 60000.00, '2023-01-01'),
+('EMP002', 65000.00, 13000.00, 52000.00, '2023-01-01'),
+('EMP003', 70000.00, 14000.00, 56000.00, '2023-01-01'),
+('EMP001', 75000.00, 15000.00, 60000.00, '2023-02-01'),
+('EMP002', 65000.00, 13000.00, 52000.00, '2023-02-01'),
+('EMP003', 70000.00, 14000.00, 56000.00, '2023-02-01');

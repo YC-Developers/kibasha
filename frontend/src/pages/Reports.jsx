@@ -1,28 +1,28 @@
 import { useState, useEffect } from 'react';
-import { BarChartBig, Users, DollarSign, TrendingUp } from 'lucide-react';
-import { reportAPI } from '../utils/api';
+import { BarChartBig, Users, DollarSign, Calendar, FileText } from 'lucide-react';
+import axios from 'axios';
+
+const API_URL = 'http://localhost:5000/api';
 
 const Reports = () => {
   const [departmentData, setDepartmentData] = useState([]);
+  const [monthlyReport, setMonthlyReport] = useState([]);
+  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7) + '-01');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchDepartmentData = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
-        const data = await reportAPI.getDepartmentSummary();
 
-        // Format data
-        const formattedData = data.map(dept => ({
-          name: dept.department || 'Unassigned',
-          employees: dept.employee_count,
-          averageSalary: parseFloat(dept.average_salary) || 0,
-          minSalary: parseFloat(dept.min_salary) || 0,
-          maxSalary: parseFloat(dept.max_salary) || 0,
-        }));
+        // Fetch department summary
+        const deptResponse = await axios.get(`${API_URL}/reports/departments`, { withCredentials: true });
+        setDepartmentData(deptResponse.data);
 
-        setDepartmentData(formattedData);
+        // Fetch monthly payroll report
+        const reportResponse = await axios.get(`${API_URL}/reports/monthly-payroll?month=${selectedMonth}`, { withCredentials: true });
+        setMonthlyReport(reportResponse.data);
       } catch (err) {
         setError('Failed to load report data');
         console.error(err);
@@ -31,10 +31,11 @@ const Reports = () => {
       }
     };
 
-    fetchDepartmentData();
-  }, []);
+    fetchData();
+  }, [selectedMonth]);
 
   const formatCurrency = (value) => {
+    if (value === null || value === undefined) return 'N/A';
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
@@ -43,11 +44,22 @@ const Reports = () => {
     }).format(value);
   };
 
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+  };
+
   // Calculate total employees and average salary
-  const totalEmployees = departmentData.reduce((sum, dept) => sum + dept.employees, 0);
-  const overallAverageSalary = departmentData.length > 0
-    ? departmentData.reduce((sum, dept) => sum + (dept.averageSalary * dept.employees), 0) / totalEmployees
+  const totalEmployees = departmentData.reduce((sum, dept) => sum + (dept.employee_count || 0), 0);
+  const totalDepartments = departmentData.length;
+  const averageNetSalary = departmentData.length > 0
+    ? departmentData.reduce((sum, dept) => sum + (parseFloat(dept.average_net_salary) || 0), 0) / departmentData.length
     : 0;
+
+  const handleMonthChange = (e) => {
+    setSelectedMonth(e.target.value);
+  };
 
   if (loading) {
     return (
@@ -59,7 +71,7 @@ const Reports = () => {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Reports</h1>
+      <h1 className="text-2xl font-bold text-gray-900">Payroll Reports</h1>
 
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
@@ -87,9 +99,9 @@ const Reports = () => {
               <DollarSign className="h-8 w-8" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-500">Average Salary</p>
+              <p className="text-sm font-medium text-gray-500">Average Net Salary</p>
               <p className="text-2xl font-semibold text-gray-900">
-                {formatCurrency(overallAverageSalary)}
+                {formatCurrency(averageNetSalary)}
               </p>
             </div>
           </div>
@@ -102,64 +114,80 @@ const Reports = () => {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">Departments</p>
-              <p className="text-2xl font-semibold text-gray-900">{departmentData.length}</p>
+              <p className="text-2xl font-semibold text-gray-900">{totalDepartments}</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Visual Representation of Department Data */}
+      {/* Monthly Payroll Report */}
       <div className="bg-white shadow rounded-lg overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-medium text-gray-900">Department Comparison</h2>
-        </div>
-        <div className="p-6">
-          <div className="space-y-6">
-            {departmentData.map((dept, index) => (
-              <div key={index} className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-gray-700">{dept.name}</span>
-                  <span className="text-sm text-gray-500">{dept.employees} employees</span>
-                </div>
-
-                {/* Employee count bar */}
-                <div className="w-full bg-gray-200 rounded-full h-2.5">
-                  <div
-                    className="bg-gray-800 h-2.5 rounded-full"
-                    style={{ width: `${(dept.employees / Math.max(...departmentData.map(d => d.employees))) * 100}%` }}
-                  ></div>
-                </div>
-
-                {/* Salary info */}
-                <div className="flex justify-between text-xs text-gray-500">
-                  <span>Min: {formatCurrency(dept.minSalary)}</span>
-                  <span>Avg: {formatCurrency(dept.averageSalary)}</span>
-                  <span>Max: {formatCurrency(dept.maxSalary)}</span>
-                </div>
-
-                {/* Salary range bar */}
-                <div className="relative w-full bg-gray-200 rounded-full h-2.5 mb-6">
-                  {/* Min to Avg */}
-                  <div
-                    className="absolute bg-blue-500 h-2.5 rounded-l-full"
-                    style={{
-                      width: `${(dept.averageSalary / Math.max(...departmentData.map(d => d.maxSalary))) * 100}%`,
-                      left: `${(dept.minSalary / Math.max(...departmentData.map(d => d.maxSalary))) * 100}%`
-                    }}
-                  ></div>
-
-                  {/* Avg to Max */}
-                  <div
-                    className="absolute bg-green-500 h-2.5 rounded-r-full"
-                    style={{
-                      width: `${((dept.maxSalary - dept.averageSalary) / Math.max(...departmentData.map(d => d.maxSalary))) * 100}%`,
-                      left: `${(dept.averageSalary / Math.max(...departmentData.map(d => d.maxSalary))) * 100}%`
-                    }}
-                  ></div>
-                </div>
-              </div>
-            ))}
+        <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+          <div className="flex items-center">
+            <FileText className="h-5 w-5 mr-2 text-gray-500" />
+            <h2 className="text-lg font-medium text-gray-900">Monthly Payroll Report</h2>
           </div>
+          <div className="flex items-center">
+            <Calendar className="h-5 w-5 mr-2 text-gray-500" />
+            <input
+              type="month"
+              value={selectedMonth.slice(0, 7)}
+              onChange={(e) => handleMonthChange(e.target.value + '-01')}
+              className="border border-gray-300 rounded-md px-3 py-1 focus:outline-none focus:ring-2 focus:ring-gray-500"
+            />
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  First Name
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Last Name
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Position
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Department
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Net Salary
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {monthlyReport.length > 0 ? (
+                monthlyReport.map((employee, index) => (
+                  <tr key={index}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {employee.first_name}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {employee.last_name}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {employee.position}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {employee.department_name}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {formatCurrency(employee.net_salary)}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="5" className="px-6 py-4 text-center text-sm text-gray-500">
+                    No payroll data available for {formatDate(selectedMonth)}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -173,19 +201,25 @@ const Reports = () => {
             <thead className="bg-gray-50">
               <tr>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Department
+                  Department Code
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Department Name
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Employees
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Average Salary
+                  Base Salary
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Minimum Salary
+                  Avg. Gross Salary
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Maximum Salary
+                  Avg. Deduction
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Avg. Net Salary
                 </th>
               </tr>
             </thead>
@@ -194,25 +228,31 @@ const Reports = () => {
                 departmentData.map((dept, index) => (
                   <tr key={index}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {dept.name}
+                      {dept.department_code}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {dept.department_name}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {dept.employees}
+                      {dept.employee_count}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatCurrency(dept.averageSalary)}
+                      {formatCurrency(dept.base_salary)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatCurrency(dept.minSalary)}
+                      {formatCurrency(dept.average_gross_salary)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatCurrency(dept.maxSalary)}
+                      {formatCurrency(dept.average_deduction)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {formatCurrency(dept.average_net_salary)}
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="5" className="px-6 py-4 text-center text-sm text-gray-500">
+                  <td colSpan="7" className="px-6 py-4 text-center text-sm text-gray-500">
                     No department data available
                   </td>
                 </tr>

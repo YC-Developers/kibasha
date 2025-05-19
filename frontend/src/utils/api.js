@@ -5,6 +5,59 @@ const API_URL = 'http://localhost:5000/api';
 // Configure axios
 axios.defaults.withCredentials = true;
 
+// Department API
+export const departmentAPI = {
+  // Get all departments
+  getAll: async () => {
+    try {
+      const res = await axios.get(`${API_URL}/departments`);
+      return res.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Get department by code
+  getByCode: async (code) => {
+    try {
+      const res = await axios.get(`${API_URL}/departments/${code}`);
+      return res.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Create department
+  create: async (departmentData) => {
+    try {
+      const res = await axios.post(`${API_URL}/departments`, departmentData);
+      return res.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Update department
+  update: async (code, departmentData) => {
+    try {
+      const res = await axios.put(`${API_URL}/departments/${code}`, departmentData);
+      return res.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Delete department
+  delete: async (code) => {
+    try {
+      const res = await axios.delete(`${API_URL}/departments/${code}`);
+      return res.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+};
+
 // Employee API
 export const employeeAPI = {
   // Get all employees
@@ -17,10 +70,10 @@ export const employeeAPI = {
     }
   },
 
-  // Get employee by ID
-  getById: async (id) => {
+  // Get employee by number
+  getByNumber: async (number) => {
     try {
-      const res = await axios.get(`${API_URL}/employees/${id}`);
+      const res = await axios.get(`${API_URL}/employees/${number}`);
       return res.data;
     } catch (error) {
       throw error;
@@ -38,9 +91,9 @@ export const employeeAPI = {
   },
 
   // Update employee
-  update: async (id, employeeData) => {
+  update: async (number, employeeData) => {
     try {
-      const res = await axios.put(`${API_URL}/employees/${id}`, employeeData);
+      const res = await axios.put(`${API_URL}/employees/${number}`, employeeData);
       return res.data;
     } catch (error) {
       throw error;
@@ -48,9 +101,9 @@ export const employeeAPI = {
   },
 
   // Delete employee
-  delete: async (id) => {
+  delete: async (number) => {
     try {
-      const res = await axios.delete(`${API_URL}/employees/${id}`);
+      const res = await axios.delete(`${API_URL}/employees/${number}`);
       return res.data;
     } catch (error) {
       throw error;
@@ -70,10 +123,10 @@ export const salaryAPI = {
     }
   },
 
-  // Get salaries by employee ID
-  getByEmployeeId: async (employeeId) => {
+  // Get salaries by employee number
+  getByEmployeeNumber: async (employeeNumber) => {
     try {
-      const res = await axios.get(`${API_URL}/employees/${employeeId}/salaries`);
+      const res = await axios.get(`${API_URL}/employees/${employeeNumber}/salaries`);
       return res.data;
     } catch (error) {
       throw error;
@@ -117,6 +170,16 @@ export const reportAPI = {
   getDepartmentSummary: async () => {
     try {
       const res = await axios.get(`${API_URL}/reports/departments`);
+      return res.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Get monthly payroll report
+  getMonthlyPayroll: async (month) => {
+    try {
+      const res = await axios.get(`${API_URL}/reports/monthly-payroll?month=${month}`);
       return res.data;
     } catch (error) {
       throw error;

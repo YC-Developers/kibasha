@@ -1,41 +1,63 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Save } from 'lucide-react';
-import { employeeAPI } from '../../utils/api';
+import { employeeAPI, departmentAPI } from '../../utils/api';
 
 const EditEmployee = () => {
   const [formData, setFormData] = useState({
+    employeeNumber: '',
     firstName: '',
     lastName: '',
-    email: '',
-    phone: '',
-    address: '',
     position: '',
-    department: '',
-    hireDate: '',
+    address: '',
+    telephone: '',
+    gender: '',
+    hiredDate: '',
+    departmentCode: '',
   });
+  const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingDepartments, setLoadingDepartments] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
-  
+
   const navigate = useNavigate();
-  const { id } = useParams();
+  const { number } = useParams();
+
+  // Fetch departments
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      try {
+        setLoadingDepartments(true);
+        const data = await departmentAPI.getAll();
+        setDepartments(data);
+      } catch (err) {
+        setError('Failed to load departments');
+        console.error(err);
+      } finally {
+        setLoadingDepartments(false);
+      }
+    };
+
+    fetchDepartments();
+  }, []);
 
   useEffect(() => {
     const fetchEmployee = async () => {
       try {
         setLoading(true);
-        const employee = await employeeAPI.getById(id);
-        
+        const employee = await employeeAPI.getByNumber(number);
+
         setFormData({
+          employeeNumber: employee.employee_number || '',
           firstName: employee.first_name || '',
           lastName: employee.last_name || '',
-          email: employee.email || '',
-          phone: employee.phone || '',
-          address: employee.address || '',
           position: employee.position || '',
-          department: employee.department || '',
-          hireDate: employee.hire_date ? employee.hire_date.split('T')[0] : '',
+          address: employee.address || '',
+          telephone: employee.telephone || '',
+          gender: employee.gender || '',
+          hiredDate: employee.hired_date ? employee.hired_date.split('T')[0] : '',
+          departmentCode: employee.department_code || '',
         });
       } catch (err) {
         setError('Failed to load employee data');
@@ -45,8 +67,10 @@ const EditEmployee = () => {
       }
     };
 
-    fetchEmployee();
-  }, [id]);
+    if (number) {
+      fetchEmployee();
+    }
+  }, [number]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -58,16 +82,17 @@ const EditEmployee = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     // Validate form
-    if (!formData.firstName || !formData.lastName || !formData.email) {
-      setError('First name, last name, and email are required');
+    if (!formData.firstName || !formData.lastName || !formData.position ||
+        !formData.hiredDate || !formData.departmentCode) {
+      setError('First name, last name, position, hired date, and department are required');
       return;
     }
-    
+
     try {
       setSaving(true);
-      await employeeAPI.update(id, formData);
+      await employeeAPI.update(number, formData);
       navigate('/employees');
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to update employee');
@@ -88,8 +113,8 @@ const EditEmployee = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900">Edit Employee</h1>
-        <Link 
-          to="/employees" 
+        <Link
+          to="/employees"
           className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
@@ -107,6 +132,43 @@ const EditEmployee = () => {
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Employee Number
+              </label>
+              <div className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-gray-100 rounded-md shadow-sm text-gray-700">
+                {formData.employeeNumber}
+              </div>
+              <p className="mt-1 text-sm text-gray-500">
+                Employee number cannot be changed.
+              </p>
+            </div>
+
+            <div>
+              <label htmlFor="departmentCode" className="block text-sm font-medium text-gray-700">
+                Department *
+              </label>
+              <select
+                id="departmentCode"
+                name="departmentCode"
+                value={formData.departmentCode}
+                onChange={handleChange}
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-gray-500 focus:border-gray-500"
+                required
+                disabled={loadingDepartments}
+              >
+                <option value="">Select a department</option>
+                {departments.map((dept) => (
+                  <option key={dept.department_code} value={dept.department_code}>
+                    {dept.department_name} ({dept.department_code})
+                  </option>
+                ))}
+              </select>
+              {loadingDepartments && (
+                <p className="mt-1 text-sm text-gray-500">Loading departments...</p>
+              )}
+            </div>
+
+            <div>
               <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
                 First Name *
               </label>
@@ -120,7 +182,7 @@ const EditEmployee = () => {
                 required
               />
             </div>
-            
+
             <div>
               <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">
                 Last Name *
@@ -135,36 +197,69 @@ const EditEmployee = () => {
                 required
               />
             </div>
-            
+
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email *
+              <label htmlFor="position" className="block text-sm font-medium text-gray-700">
+                Position *
               </label>
               <input
-                type="email"
-                id="email"
-                name="email"
-                value={formData.email}
+                type="text"
+                id="position"
+                name="position"
+                value={formData.position}
                 onChange={handleChange}
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-gray-500 focus:border-gray-500"
                 required
               />
             </div>
-            
+
             <div>
-              <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
-                Phone
+              <label htmlFor="gender" className="block text-sm font-medium text-gray-700">
+                Gender
+              </label>
+              <select
+                id="gender"
+                name="gender"
+                value={formData.gender}
+                onChange={handleChange}
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-gray-500 focus:border-gray-500"
+              >
+                <option value="">Select gender</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="telephone" className="block text-sm font-medium text-gray-700">
+                Telephone
               </label>
               <input
                 type="text"
-                id="phone"
-                name="phone"
-                value={formData.phone}
+                id="telephone"
+                name="telephone"
+                value={formData.telephone}
                 onChange={handleChange}
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-gray-500 focus:border-gray-500"
               />
             </div>
-            
+
+            <div>
+              <label htmlFor="hiredDate" className="block text-sm font-medium text-gray-700">
+                Hired Date *
+              </label>
+              <input
+                type="date"
+                id="hiredDate"
+                name="hiredDate"
+                value={formData.hiredDate}
+                onChange={handleChange}
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-gray-500 focus:border-gray-500"
+                required
+              />
+            </div>
+
             <div className="md:col-span-2">
               <label htmlFor="address" className="block text-sm font-medium text-gray-700">
                 Address
@@ -178,50 +273,8 @@ const EditEmployee = () => {
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-gray-500 focus:border-gray-500"
               ></textarea>
             </div>
-            
-            <div>
-              <label htmlFor="position" className="block text-sm font-medium text-gray-700">
-                Position
-              </label>
-              <input
-                type="text"
-                id="position"
-                name="position"
-                value={formData.position}
-                onChange={handleChange}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-gray-500 focus:border-gray-500"
-              />
-            </div>
-            
-            <div>
-              <label htmlFor="department" className="block text-sm font-medium text-gray-700">
-                Department
-              </label>
-              <input
-                type="text"
-                id="department"
-                name="department"
-                value={formData.department}
-                onChange={handleChange}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-gray-500 focus:border-gray-500"
-              />
-            </div>
-            
-            <div>
-              <label htmlFor="hireDate" className="block text-sm font-medium text-gray-700">
-                Hire Date
-              </label>
-              <input
-                type="date"
-                id="hireDate"
-                name="hireDate"
-                value={formData.hireDate}
-                onChange={handleChange}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-gray-500 focus:border-gray-500"
-              />
-            </div>
           </div>
-          
+
           <div className="flex justify-end">
             <button
               type="submit"

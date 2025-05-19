@@ -1,58 +1,68 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { UserPlus, Edit, Trash2, Search } from 'lucide-react';
-import { employeeAPI } from '../../utils/api';
+import { PlusCircle, Edit, Trash2, Search } from 'lucide-react';
+import { departmentAPI } from '../../utils/api';
 
-const EmployeeList = () => {
-  const [employees, setEmployees] = useState([]);
+const DepartmentList = () => {
+  const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    const fetchEmployees = async () => {
+    const fetchDepartments = async () => {
       try {
         setLoading(true);
-        const data = await employeeAPI.getAll();
-        setEmployees(data);
+        const data = await departmentAPI.getAll();
+        setDepartments(data);
       } catch (err) {
-        setError('Failed to load employees');
+        setError('Failed to load departments');
         console.error(err);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchEmployees();
+    fetchDepartments();
   }, []);
 
-  const handleDelete = async (number) => {
-    if (!window.confirm('Are you sure you want to delete this employee?')) {
+  const handleDelete = async (code) => {
+    if (!window.confirm('Are you sure you want to delete this department?')) {
       return;
     }
 
     try {
-      await employeeAPI.delete(number);
-      setEmployees(employees.filter(employee => employee.employee_number !== number));
+      await departmentAPI.delete(code);
+      setDepartments(departments.filter(dept => dept.department_code !== code));
     } catch (err) {
-      setError('Failed to delete employee');
+      if (err.response?.status === 400) {
+        alert('Cannot delete department that has employees assigned to it');
+      } else {
+        setError('Failed to delete department');
+      }
       console.error(err);
     }
   };
 
-  const filteredEmployees = employees.filter(employee => {
-    const fullName = `${employee.first_name} ${employee.last_name}`.toLowerCase();
+  const filteredDepartments = departments.filter(dept => {
     const searchLower = searchTerm.toLowerCase();
-    return fullName.includes(searchLower) ||
-           (employee.employee_number && employee.employee_number.toLowerCase().includes(searchLower)) ||
-           (employee.position && employee.position.toLowerCase().includes(searchLower)) ||
-           (employee.department_name && employee.department_name.toLowerCase().includes(searchLower));
+    return dept.department_code.toLowerCase().includes(searchLower) || 
+           dept.department_name.toLowerCase().includes(searchLower);
   });
+
+  const formatCurrency = (value) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(value);
+  };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="text-gray-500 text-xl">Loading employees...</div>
+        <div className="text-gray-500 text-xl">Loading departments...</div>
       </div>
     );
   }
@@ -60,13 +70,13 @@ const EmployeeList = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">Employees</h1>
-        <Link
-          to="/employees/add"
+        <h1 className="text-2xl font-bold text-gray-900">Departments</h1>
+        <Link 
+          to="/departments/add" 
           className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-gray-900 hover:bg-gray-800"
         >
-          <UserPlus className="h-4 w-4 mr-2" />
-          Add Employee
+          <PlusCircle className="h-4 w-4 mr-2" />
+          Add Department
         </Link>
       </div>
 
@@ -84,35 +94,26 @@ const EmployeeList = () => {
             </div>
             <input
               type="text"
-              placeholder="Search employees..."
+              placeholder="Search departments..."
               className="pl-10 pr-4 py-2 border border-gray-300 rounded-md w-full focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
         </div>
-
+        
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Employee Number
+                  Department Code
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Name
+                  Department Name
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Position
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Department
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Contact
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Hired Date
+                  Gross Salary
                 </th>
                 <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
@@ -120,41 +121,30 @@ const EmployeeList = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredEmployees.length > 0 ? (
-                filteredEmployees.map((employee) => (
-                  <tr key={employee.employee_number}>
+              {filteredDepartments.length > 0 ? (
+                filteredDepartments.map((department) => (
+                  <tr key={department.department_code}>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
-                        {employee.employee_number}
+                        {department.department_code}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
-                        {employee.first_name} {employee.last_name}
-                      </div>
+                      <div className="text-sm text-gray-900">{department.department_name}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{employee.position || 'N/A'}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{employee.department_name || 'N/A'}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{employee.telephone || 'N/A'}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {employee.hired_date ? new Date(employee.hired_date).toLocaleDateString() : 'N/A'}
+                      <div className="text-sm text-gray-900">{formatCurrency(department.gross_salary)}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex justify-end space-x-2">
-                        <Link
-                          to={`/employees/edit/${employee.employee_number}`}
+                        <Link 
+                          to={`/departments/edit/${department.department_code}`} 
                           className="text-blue-600 hover:text-blue-900"
                         >
                           <Edit className="h-5 w-5" />
                         </Link>
-                        <button
-                          onClick={() => handleDelete(employee.employee_number)}
+                        <button 
+                          onClick={() => handleDelete(department.department_code)} 
                           className="text-red-600 hover:text-red-900"
                         >
                           <Trash2 className="h-5 w-5" />
@@ -165,8 +155,8 @@ const EmployeeList = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="7" className="px-6 py-4 text-center text-sm text-gray-500">
-                    No employees found
+                  <td colSpan="4" className="px-6 py-4 text-center text-sm text-gray-500">
+                    No departments found
                   </td>
                 </tr>
               )}
@@ -178,4 +168,4 @@ const EmployeeList = () => {
   );
 };
 
-export default EmployeeList;
+export default DepartmentList;

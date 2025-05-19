@@ -10,6 +10,11 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Reports from './pages/Reports';
 
+// Department pages
+import DepartmentList from './pages/Departments/List';
+import AddDepartment from './pages/Departments/Add';
+import EditDepartment from './pages/Departments/Edit';
+
 // Employee pages
 import EmployeeList from './pages/Employees/List';
 import AddEmployee from './pages/Employees/Add';
@@ -99,7 +104,7 @@ function App() {
             />
 
             <Route
-              path="/employees/edit/:id"
+              path="/employees/edit/:number"
               element={
                 <ProtectedRoute>
                   <EditEmployee />
@@ -139,6 +144,33 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Reports />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/departments"
+              element={
+                <ProtectedRoute>
+                  <DepartmentList />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/departments/add"
+              element={
+                <ProtectedRoute>
+                  <AddDepartment />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/departments/edit/:code"
+              element={
+                <ProtectedRoute>
+                  <EditDepartment />
                 </ProtectedRoute>
               }
             />
